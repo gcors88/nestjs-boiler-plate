@@ -1,0 +1,17 @@
+version: '3'
+
+volumes:
+  db-data:
+    driver: local
+
+services:
+  db:
+    hostname: db
+    image: postgres:10
+    environment:
+      POSTGRES_PASSWORD: '1234'
+      POSTGRES_DATABASE: 'boiler_plate'
+    ports:
+      - '15432:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
