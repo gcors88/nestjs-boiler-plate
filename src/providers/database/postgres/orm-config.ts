@@ -9,5 +9,4 @@ export const typeOrmConnectionSource = new DataSource({
   database: process.env.POSTGRES_DATABASE,
   entities: [__dirname + '/../../../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
-  synchronize: true,
 });

@@ -2,9 +2,18 @@ version: '3'
 
 volumes:
   db-data:
-    driver: local
+    driver: local  
 
 services:
+  base: &base
+    hostname: base
+    image: boiler_plate
+    stdin_open: true
+    tty: true
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+
   db:
     hostname: db
     image: postgres:10
@@ -15,3 +24,47 @@ services:
       - '15432:5432'
     volumes:
       - db-data:/var/lib/postgresql/data
+
+  app:
+    <<: *base
+    command: /bin/ash -c "npm run start:dev"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DATABASE: boiler_plate
+      PASSWORD_SALT_ROUNDS: 10
+      SECONDS_TO_EXPIRE_TOKEN: 60
+      JWT_SECRET: '4b5e39334349734a2870366c35456c222e2d4c3b7643317d3c7e6e7a71652b2d6f7a44577153367e3c7d415f222a53786371'
+    volumes: 
+      - .:/app  
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db  
+
+  tst:
+    <<: *base
+    command: /bin/ash -c "npm run test"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DATABASE: boiler_plate_test
+      PASSWORD_SALT_ROUNDS: 10
+      SECONDS_TO_EXPIRE_TOKEN: 60
+      JWT_SECRET: '4b5e39334349734a2870366c35456c222e2d4c3b7643317d3c7e6e7a71652b2d6f7a44577153367e3c7d415f222a53786371'
+    volumes: 
+      - .:/app  
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db      
+
+  
