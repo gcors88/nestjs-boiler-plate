@@ -12,6 +12,11 @@ import { SigninDto } from './dto/signin.dto';
 import { UsersRepository } from './users.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserModel } from 'src/users/entities/user.entity';
+import { SuccessMessages } from 'src/commons/enums/succes-messages';
+import { SigninResponseDto } from 'src/users/dto/signin-response.dto';
+import { RefreshTokenDto } from 'src/users/dto/refresh-token.dto';
+import { getErrorName } from 'src/commons/helpers/get-error-name';
+import { ErrorMessages } from 'src/commons/enums/error-messages';
 
 @Injectable()
 export class UsersService {
@@ -31,11 +36,16 @@ export class UsersService {
     const validateUser = await this.userRepository.findOne(createUserDto.email);
 
     if (validateUser) {
-      throw new BadRequestException('User already exists');
+      throw new BadRequestException({
+        name: getErrorName(ErrorMessages.USER_ALREADY_EXISTS),
+        message: ErrorMessages.USER_ALREADY_EXISTS,
+      });
     }
 
     const user: CreateUserDto = {
       ...createUserDto,
+      isActive: true,
+      isPasswordChange: true,
       password: bcrypt.hashSync(
         createUserDto.password,
         this.passwordSaltRounds,
@@ -45,11 +55,14 @@ export class UsersService {
     await this.userRepository.create(user);
 
     return {
-      message: 'User created successfully',
+      message: SuccessMessages.CREATED_USER_SUCCESSFULLY,
     };
   }
 
-  public async signin({ email, password }: SigninDto) {
+  public async signin({
+    email,
+    password,
+  }: SigninDto): Promise<SigninResponseDto> {
     const user = await this.userRepository.findOne(email);
 
     this.validateIfExistsUser(user);
@@ -61,18 +74,58 @@ export class UsersService {
       });
     }
 
+    return this.getSigninProps(user);
+  }
+
+  public async refreshToken(refreshToken: string): Promise<SigninResponseDto> {
+    const { userId, exp: timeToExpireToken }: RefreshTokenDto =
+      this.jwtService.decode(refreshToken);
+
+    const isExpiredToken = Date.now() >= timeToExpireToken * 1000;
+
+    if (isExpiredToken) {
+      throw new UnauthorizedException({
+        name: getErrorName(ErrorMessages.EXPIRED_TOKEN),
+        message: ErrorMessages.EXPIRED_TOKEN,
+      });
+    }
+    const user = await this.userRepository.findById(userId);
+    this.validateIfExistsUser(user);
+
+    return this.getSigninProps(user);
+  }
+
+  private async getSigninProps(user: UserModel): Promise<SigninResponseDto> {
     const accessToken = await this.jwtService.signAsync({
       name: user.name,
       email: user.email,
+      roles: user.roles,
     });
 
+    const refreshToken = await this.jwtService.signAsync(
+      {
+        userId: user.id,
+      },
+      {
+        expiresIn: `${this.configService.get<number>(
+          'SECONDS_TO_EXPIRES_REFRESH_TOKEN',
+        )}s`,
+      },
+    );
+
     return {
+      accessToken,
+      refreshToken,
       name: user.name,
-      accessToken: accessToken,
+      roles: user.roles,
     };
   }
 
   private validateIfExistsUser(user: UserModel) {
-    if (!user) throw new NotFoundException('User not found');
+    if (!user)
+      throw new NotFoundException({
+        name: getErrorName(ErrorMessages.USER_NOT_FOUND),
+        message: ErrorMessages.USER_NOT_FOUND,
+      });
   }
 }

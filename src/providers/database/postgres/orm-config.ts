@@ -1,5 +1,7 @@
 import { DataSource } from 'typeorm';
 
+import { isDevelopmentEnvironment } from '../../../commons/helpers/is-development-environment';
+
 export const typeOrmConnectionSource = new DataSource({
   type: 'postgres',
   host: process.env.POSTGRES_HOST,
@@ -9,4 +11,5 @@ export const typeOrmConnectionSource = new DataSource({
   database: process.env.POSTGRES_DATABASE,
   entities: [__dirname + '/../../../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
+  migrationsRun: !isDevelopmentEnvironment(),
 });

@@ -8,19 +8,25 @@ import { Connection } from 'src/providers/database/postgres/interfaces/connectio
 
 @Injectable()
 export class UsersRepository {
-  private repository: Repository<UserModel>
+  private repository: Repository<UserModel>;
   constructor(
     @Inject(Database)
     private readonly database: Connection,
   ) {
-    this.repository = this.database.getRepository(UserModel)
+    this.repository = this.database.getRepository(UserModel);
   }
 
-  public async create(user: CreateUserDto) {
+  public async create(user: CreateUserDto): Promise<UserModel> {
     return this.repository.save(user);
   }
 
-  public async findOne(email: string) {
+  public async findOne(email: string): Promise<UserModel> {
     return this.repository.findOneBy({ email });
+  }
+
+  public async findById(userId: number): Promise<UserModel> {
+    return this.repository.findOneBy({
+      id: userId,
+    });
   }
 }
